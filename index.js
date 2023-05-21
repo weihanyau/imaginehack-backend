@@ -4,6 +4,7 @@ import {
   applyInterview,
   createInterview,
   findAllIntervieweeByInterviewId,
+  findInterviewById,
   findIntervieweeById,
   findIntervieweeDetailsByIntervieweeId,
   submitVideo,
@@ -43,6 +44,12 @@ app.get("/interview/:interviewId/interviewee", async (req, res) => {
   res.send(interviewees);
 });
 
+app.get("/interview/:interviewId", async (req, res) => {
+  const interviewId = req.params.interviewId;
+  const interview = await findInterviewById(interviewId);
+  res.send(interview);
+});
+
 app.get("/interviewee/:intervieweeId", async (req, res) => {
   const intervieweeId = req.params.intervieweeId;
   const interviewees = await findIntervieweeById(intervieweeId);
@@ -76,9 +83,10 @@ app.post("/apply", async (req, res) => {
 app.post("/upload", upload.single("file"), async (req, res) => {
   const videoFile = req.file;
   const intervieweeId = req.body.intervieweeId;
+  const question = req.body.question;
 
   try {
-    const result = await submitVideo(videoFile, intervieweeId);
+    const result = await submitVideo(question, videoFile, intervieweeId);
     if (result !== "err") {
       res.status(200).json(result);
     }

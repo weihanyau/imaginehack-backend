@@ -23,11 +23,20 @@ const config = {
 };
 
 export async function createInterview(interviewName, questions) {
-  const newInterview = new Interview({
-    name: interviewName,
-    questions: questions,
-  });
-  return await newInterview.save();
+  const currInterview = await Interview.findById(
+    "64690fef7e09492a14acfe14"
+  ).exec();
+
+  return await currInterview
+    .updateOne({
+      name: interviewName,
+      questions: questions,
+    })
+    .exec();
+}
+
+export async function findInterviewById(interviewId) {
+  return await Interview.findById(interviewId).exec();
 }
 
 export async function applyInterview(name, interviewId) {
@@ -53,7 +62,7 @@ export async function findIntervieweeDetailsByIntervieweeId(intervieweeId) {
   return await IntervieweeDetail.find({ intervieweeId: intervieweeId }).exec();
 }
 
-export async function submitVideo(file, intervieweeId) {
+export async function submitVideo(question, file, intervieweeId) {
   const tempPath = file.path;
   const fileName = uuid4();
   const targetPath = `./upload/${fileName}.webm`;
@@ -90,8 +99,6 @@ export async function submitVideo(file, intervieweeId) {
           return result.alternatives[0].transcript;
         })
         .join("\n");
-
-      console.log(transcription);
 
       const newInterviewDetail = new IntervieweeDetail({
         question: "",
