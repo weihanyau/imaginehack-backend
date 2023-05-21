@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import {
   applyInterview,
   createInterview,
+  findAllInterviewDetail,
   findAllIntervieweeByInterviewId,
   findInterviewById,
   findIntervieweeById,
@@ -14,15 +15,18 @@ import multer from "multer";
 import uuid4 from "uuid4";
 import * as dotenv from "dotenv";
 import cors from "cors";
+import fetch from "node-fetch";
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
 
 const app = express();
 const port = 3000;
 
-const upload = multer({ dest: "/upload" });
+const upload = multer({ dest: "./temp/upload" });
 
-const whitelist = ["http://localhost:3001", "http://localhost:3000"];
+const whitelist = ["http://localhost:3001", "http://localhost:3000", "*"];
 
 const corsOptions = {
   origin: whitelist,
@@ -34,7 +38,15 @@ app.use(bodyParser.json());
 main().catch((err) => console.log(err));
 
 app.get("/", (req, res) => {
-  console.log(uuid4());
+  const summarizeForm = new FormData();
+  summarizeForm.append("paragraph", "go fuck yourself");
+  fetch("http://localhost:5000/anomaly", {
+    method: "POST",
+    body: summarizeForm,
+  })
+    .then((response) => response.json())
+    .then((result) => {
+    });
   res.send("Hello World!");
 });
 
@@ -63,6 +75,10 @@ app.get("/interviewee/:intervieweeId/details", async (req, res) => {
   );
   res.send(interviewDetails);
 });
+
+app.get("/intervieweeDetail", async (req,res) => {
+  res.send(await findAllInterviewDetail());
+})
 
 app.post("/interview", async (req, res) => {
   const interviewName = req.body.name;

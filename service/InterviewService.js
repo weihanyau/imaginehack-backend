@@ -6,6 +6,10 @@ import uuid4 from "uuid4";
 import ffmpeg from "fluent-ffmpeg";
 import { SpeechClient } from "@google-cloud/speech";
 import * as dotenv from "dotenv";
+import fetch from "node-fetch";
+import path from "path";
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
 
 dotenv.config();
 
@@ -26,6 +30,9 @@ export async function createInterview(interviewName, questions) {
   const currInterview = await Interview.findById(
     "64690fef7e09492a14acfe14"
   ).exec();
+
+  await Interviewee.deleteMany({})
+  await IntervieweeDetail.deleteMany({})
 
   return await currInterview
     .updateOne({
@@ -48,6 +55,10 @@ export async function applyInterview(name, interviewId) {
   return await newInterviewee.save();
 }
 
+export async function findAllInterviewDetail(){
+  return await IntervieweeDetail.find().exec();
+}
+
 export async function findAllIntervieweeByInterviewId(interviewId) {
   return await Interviewee.find({
     interviewId: interviewId,
@@ -67,6 +78,7 @@ export async function submitVideo(question, file, intervieweeId) {
   const fileName = uuid4();
   const targetPath = `./upload/${fileName}.webm`;
   const audioOutputPath = `./upload/${fileName}.mp3`;
+  const interviewee = await Interviewee.findById(intervieweeId).exec();
 
   let results = "err";
 
@@ -100,11 +112,42 @@ export async function submitVideo(question, file, intervieweeId) {
         })
         .join("\n");
 
+      const anomalyForm = new FormData();
+      anomalyForm.append("paragraph", transcription);
+      const anomalyResponse = await fetch("http://localhost:5000/anomaly", {
+        method: "POST",
+        body: anomalyForm,
+      });
+
+      const anomalyResult = await anomalyResponse.json();
+
+      const summarizeForm = new FormData();
+      summarizeForm.append("summarization", transcription);
+      const summarizeResponse = await fetch("http://localhost:5000/summarize", {
+        method: "POST",
+        body: summarizeForm,
+      });
+      const summarizeResult = await summarizeResponse.json();
+
+      const absPath = path.resolve(targetPath);
+      const videoForm = new FormData();
+      videoForm.append("video", absPath);
+      const videoResponse = await fetch("http://localhost:5000/facial", {
+        method: "POST",
+        body: videoForm,
+      });
+      const videoResult = await videoResponse.json();
+
       const newInterviewDetail = new IntervieweeDetail({
         question: "",
         intervieweeId: intervieweeId,
         videoLink: targetPath,
         transcript: transcription,
+        anomaly: anomalyResult.anomaly,
+        normal: anomalyResult.normal,
+        summary: summarizeResult.summary[0],
+        confidence: Number(videoResult.confidence),
+        name: interviewee.name
       });
 
       results = await newInterviewDetail.save();
